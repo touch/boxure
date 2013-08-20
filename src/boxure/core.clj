@@ -122,7 +122,8 @@
         command-q (new LinkedBlockingQueue)
         box-cl (BoxureClassLoader. (into-array URL (map (comp as-url (partial str "file:"))
                                                         classpath))
-                                   parent-cl)
+                                   parent-cl
+                                   (or (:isolate options) ""))
         thread (Thread. (boxure-thread-fn box-cl classpath command-q options
                                           (:name (:project spec))))]
     (.start thread)
