@@ -55,6 +55,11 @@
     (init-profiles (project-with-profiles @project) [:default])))
 
 
+(defn jar-project
+  [path]
+  (read-project-str (read-from-jar path "project.clj") path))
+
+
 ;;; Boxure implementation.
 
 (defn- eval-in-boxure
@@ -115,7 +120,7 @@
   here."
   [options parent-cl jar-path]
   (let [jar-path (resolve-file-path "." jar-path)
-        project (read-project-str (read-from-jar jar-path "project.clj") jar-path)
+        project (jar-project jar-path)
         dependencies (when (:resolve-dependencies options)
                        (map #(.getAbsolutePath %)
                             (resolve-dependencies :dependencies project)))
