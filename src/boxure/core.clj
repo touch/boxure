@@ -35,7 +35,8 @@
 (defn- read-from-jar [jar-path inner-path]
   (if-let [jar (try (JarFile. jar-path) (catch Exception ex))]
     (if-let [entry (.getJarEntry jar inner-path)]
-      (slurp (.getInputStream jar entry))
+      (with-open [is (.getInputStream jar entry)]
+        (slurp is))
       (error (str "Could not find file '" inner-path "' in: " jar-path)))
     (error (str "Could not find or read JAR file: " jar-path))))
 
@@ -90,9 +91,7 @@
             (when promise (deliver promise result))
             (recur))
           (println (str "[Boxure " name " received stop command]")))
-        (do
-          (println "[Boxure" name "idle]")
-          (recur))))))
+        (recur)))))
 
 
 ;;; Boxure library API.
