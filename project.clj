@@ -1,6 +1,6 @@
 (defproject boxure "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "A Clojure runtime isolating classloader."
+  :url "http://github.com/touch/boxure"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[nl.onlinetouch/clojure "1.5.1"]
@@ -17,3 +17,4 @@
   :java-source-paths ["src-java"])
 
 ;;; Sync changes to this file with pom.xml.
+;;; ---TODO: Add the :pom-plugins key when Leiningen 2.3.4 is released.
