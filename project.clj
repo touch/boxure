@@ -8,7 +8,8 @@
                  [leiningen-core "2.10.0" :exclusions [org.clojure/clojure]]
                  [classlojure "0.6.6"]
                  [org.apache.maven.wagon/wagon-provider-api "3.5.3"] 
-                 [org.apache.maven.wagon/wagon-http "3.5.3"]]
+                 [org.apache.maven.wagon/wagon-http "3.5.3"]
+                 [commons-io/commons-io "2.11.0"]]
   
   :exclusions [org.clojure/clojure]
   :global-vars {*warn-on-reflection* true}
