@@ -6,7 +6,8 @@
   :dependencies [[boxure/clojure "1.9.0"]
                  ;; Until Leiningen fixes it's plexus and wagon deps, we add and upgrade it explicitly:
                  [leiningen-core "2.10.0" :exclusions [org.clojure/clojure]]
-                 [classlojure "0.6.6"]]
+                 [classlojure "0.6.6"]
+                 [org.apache.maven.wagon/wagon-provider-api "3.5.3"]]
   :exclusions [org.clojure/clojure]
   :global-vars {*warn-on-reflection* true}
   :jvm-opts ["-XX:+UseConcMarkSweepGC"
