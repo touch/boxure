@@ -8,7 +8,7 @@
             [clojure.main] ; For lein compile :all
             [clojure.java.io :refer (as-url file)]
             [leiningen.core.project :refer (init-profiles project-with-profiles)]
-            [leiningen.core.classpath :refer (resolve-dependencies)]
+            [leiningen.core.classpath :refer (resolve-managed-dependencies)]
             [classlojure.core :refer (invoke-in with-classloader eval-in*)])
   (:import [boxure BoxureClassLoader]
            [java.io File]
@@ -171,10 +171,10 @@
   (let [project (file-project file (or (:profiles options) [:default]))
         dependencies (when (:resolve-dependencies options)
                        (map #(.getAbsolutePath ^File %)
-                            (resolve-dependencies :dependencies project)))
+                            (resolve-managed-dependencies :dependencies nil project)))
         classpath (concat (file-classpath file project) dependencies)
         urls (into-array URL (map (comp as-url (partial str "file:")) classpath))
-        _ (when (:debug? options)
+        _ (when true
             (println "Classpath URLs for box:")
             (doseq [url urls] (print url)))
         box-cl (BoxureClassLoader. urls parent-cl
