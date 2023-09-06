@@ -55,7 +55,7 @@ public class BoxureClassLoader extends DynamicClassLoader {
                            final boolean logging) {
     super(urls, parent, new clojure.lang.LoaderContext());
     this.userIsolate = userIsolate;
-    this.logging = true;
+    this.logging = logging;
   }
 
 
