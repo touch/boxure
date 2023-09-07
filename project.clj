@@ -21,6 +21,9 @@
              ;; "-XX:+HeapDumpOnOutOfMemoryError"
              ]
   :java-source-paths ["src-java"]
+  :pom-addition [:properties
+                 ["maven.compiler.source" "8"]
+                 ["maven.compiler.target" "8"]]
   :pom-plugins [[com.theoryinpractise/clojure-maven-plugin "1.7.1"
                  {:extensions "true"
                   :configuration ([:sourceDirectories [:sourceDirectory "src"]]
