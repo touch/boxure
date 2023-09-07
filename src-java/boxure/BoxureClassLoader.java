@@ -93,8 +93,8 @@ public class BoxureClassLoader extends DynamicClassLoader {
       }
     } else {
       try {
-        final Class<?> superClazz = super.loadClass(name, resolve);
         if (logging) log("[Boxure loading class "+ name +" by normal classloading.]");
+        final Class<?> superClazz = super.loadClass(name, resolve);
         if (this != superClazz.getClassLoader()) {
           if (logging) log("  |- class was loaded outside box, (need to resolve? " + resolve + ") by: "+ superClazz.getClassLoader());
           if (logging) log("  |- current context ClassLoader: "+ Thread.currentThread().getContextClassLoader());
