@@ -3,7 +3,7 @@
 ;; file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 (defproject module "1.0"
-  :dependencies [[org.clojure/clojure "1.5.1"]]
+  :dependencies [[org.clojure/clojure "1.10.3"]]
   :exclusions [org.clojure/clojure])
 
 ;;; Don't forget to execute `zip module.jar *` after updates in this file!

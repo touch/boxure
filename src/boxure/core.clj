@@ -10,14 +10,18 @@
             [leiningen.core.project :refer (init-profiles project-with-profiles)]
             [leiningen.core.classpath :refer (resolve-dependencies)]
             [classlojure.core :refer (invoke-in with-classloader eval-in*)])
+            
   (:import [boxure BoxureClassLoader]
            [java.io File]
            [java.net URL]
            [java.util.concurrent LinkedBlockingQueue TimeUnit]
            [java.util.jar JarFile]
-           [clojure.lang DynamicClassLoader])
+           [clojure.lang DynamicClassLoader]
+           [org.projectodd.shimdandy ClojureRuntimeShim])
   (:gen-class))
 
+(def GLOBAL_PROJ {:dependencies [['org.projectodd.shimdandy/shimdandy-api "1.2.1"]
+                                 ['org.projectodd.shimdandy/shimdandy-impl "1.2.1"] ]})
 
 ;; Make sure JAR streams are not cached.
 (try
@@ -81,11 +85,11 @@
   point to a JAR file or to a directory. One can specify a vector of
   profiles to apply, which defaults to [:default]."
   ([^File file]
-     (file-project file [:default]))
+   (file-project file [:default]))
   ([^File file profiles]
-     (if (.isDirectory file)
-       (dir-project file profiles)
-       (jar-project file profiles))))
+   (if (.isDirectory file)
+     (dir-project file profiles)
+     (jar-project file profiles))))
 
 (defn ensure-prefix [prefix ^String string]
   (if (.startsWith string prefix) string (str prefix string)))
@@ -120,24 +124,23 @@
    (catch NoSuchFieldException e
     ; Not running on patched Clojure
     (let [answer (promise)]
-    (.start (Thread. (fn [] (deliver answer (clojure.lang.Var/cloneThreadBindingFrame)))))
-    @answer))))
+     (.start (Thread. (fn [] (deliver answer (clojure.lang.Var/cloneThreadBindingFrame)))))
+     @answer))))
 
 ;;; Boxure library API.
 
-(defrecord Boxure [name box-cl project bindings])
+(defrecord Boxure [name box-cl project shim])
 
 
-(defmacro call-in-box
-  "Execute the given body in the context of the given Boxure."
-  [box & body]
-  `(let [^Boxure box# ~box
-         frame# (clojure.lang.Var/getThreadBindingFrame)
-         ]
-      (try
-        (clojure.lang.Var/resetThreadBindingFrame (.bindings box#))
-        (with-classloader (.box-cl box#) ~@body)
-        (finally (clojure.lang.Var/resetThreadBindingFrame frame#)))))
+(defn eval-in-runtime [runtime code-as-string]
+  (letfn [(call [fqsym code] (.invoke runtime fqsym code))]
+    (call "clojure.core/load-string" code-as-string)))
+
+(defmacro call-in-box [box & body]
+   "Execute the given body in the context of the given Boxure."
+  (let [runtime (:runtime box)
+        text (pr-str (conj body 'do))]
+    `(eval-in-runtime ~runtime ~text)))
 
 
 (defn boxure
@@ -169,10 +172,13 @@
   the project map from the project.clj file. Defaults to [:default]."
   [options parent-cl file]
   (let [project (file-project file (or (:profiles options) [:default]))
+        global-deps (map #(.getAbsolutePath ^File %)
+                         (resolve-dependencies :dependencies GLOBAL_PROJ))
+        
         dependencies (when (:resolve-dependencies options)
                        (map #(.getAbsolutePath ^File %)
                             (resolve-dependencies :dependencies project)))
-        classpath (concat (file-classpath file project) dependencies)
+        classpath (concat (file-classpath file project) dependencies global-deps)
         urls (into-array URL (map (comp as-url (partial str "file:")) classpath))
         _ (when (:debug? options)
             (println "Classpath URLs for box:")
@@ -180,25 +186,8 @@
         box-cl (BoxureClassLoader. urls parent-cl
                                    (apply str (interpose "|" (:isolates options)))
                                    (boolean (:debug? options)))
-        loaded (ref (sorted-set 'clojure.core
-                                'clojure.core.protocols
-                                'clojure.uuid 'clojure.instant
-                                'clojure.java.io 'clojure.string))
-        bindings {clojure.lang.Compiler/LOADER box-cl
-                  #'clojure.core/*use-context-classloader* true
-                  #'clojure.core/*loaded-libs* loaded}
-        frame (let [cur-frame (clojure.lang.Var/getThreadBindingFrame)]
-                (clojure.lang.Var/resetThreadBindingFrame empty-bindings-frame)
-                (let [f (with-classloader box-cl
-                          (clojure.core/push-thread-bindings bindings)
-                          (require 'clojure.main)
-                          (clojure.main/with-bindings
-                            (in-ns 'user)
-                            (refer 'clojure.core)
-                            (clojure.lang.Var/cloneThreadBindingFrame)))]
-                  (clojure.lang.Var/resetThreadBindingFrame cur-frame)
-                  f))]
-    (Boxure. (:name project) box-cl project frame)))
+        shim (ClojureRuntimeShim/newRuntime box-cl (:name project))]
+    (Boxure. (:name project) box-cl project shim)))
 
 
 (defn eval
@@ -208,39 +197,9 @@
   (call-in-box box
     (clojure.core/eval form)))
 
-
-(defn is-loaded-by-classloader? [classloader object]
-  (when object
-    (loop [cl (.getClassLoader (if (class? object) ^Class object #_else (class object)))]
-      (or (= cl classloader)
-          (if-let [cl (when cl (.getParent cl))] (recur cl) #_else false)))))
-
-(defn remove-classloaded-methods! [classloader ^clojure.lang.MultiFn multifn]
-  (let [is-loaded-by-classloader? (partial is-loaded-by-classloader? classloader)]
-    (->> (prefers multifn)
-         (remove (comp is-loaded-by-classloader? key))
-         (map (fn [[k v]] [k (set (remove is-loaded-by-classloader? v))]))
-         (into (hash-map))
-         (.setPreferTable multifn))
-    (doseq [[k v] (methods multifn)]
-      (when (is-loaded-by-classloader? k)
-        (remove-method multifn k))
-      (when (is-loaded-by-classloader? v)
-        (remove-method multifn k)))))
-
 (defn clean-and-stop
   "The same as `stop`, with some added calls to clean up the Clojure
   runtime inside the box. This prevents memory leaking boxes."
-  [^Boxure box]
-  (call-in-box box
-    ; Make sure only the Box's Agents are shut-down by using reflection.
-    (.. box box-cl (loadClass "clojure.lang.Agent") (getDeclaredMethod "shutdown" (make-array Class 0)) (invoke nil (make-array Object 0))))
-
-  (remove-classloaded-methods! (.box-cl box) clojure.core/print-method)
-  (remove-classloaded-methods! (.box-cl box) clojure.core/print-dup)
-
-  (let [current-thread (Thread/currentThread)]
-    (when (= (.box-cl box) (.getContextClassLoader current-thread))
-      (.setContextClassLoader ^Thread current-thread nil)))
-  (.close ^BoxureClassLoader (. box box-cl))
-  (BoxureClassLoader/gc))
+  [^Boxure box] 
+  (BoxureClassLoader/gc)
+  (-> box :shim (.close)))

@@ -50,14 +50,31 @@ public class BoxureClassLoader extends DynamicClassLoader {
 
   private final String userIsolate;
   private final boolean logging;
+  private static Method superFindInMemoryClass;
 
   public BoxureClassLoader(final URL[] urls, final ClassLoader parent, final String userIsolate,
                            final boolean logging) {
-    super(urls, parent, new clojure.lang.LoaderContext());
+    
+    super(parent);
+    Arrays.stream(urls).forEach(u -> this.addURL(u));
     this.userIsolate = userIsolate;
     this.logging = logging;
+
   }
 
+  static Method initSuperFindInMemoryClass() throws NoSuchMethodException {
+    if (superFindInMemoryClass == null) { 
+      superFindInMemoryClass = DynamicClassLoader.class.getDeclaredMethod("findInMemoryClass", String.class);
+      superFindInMemoryClass.setAccessible(true);
+    }
+    return superFindInMemoryClass;
+  }
+
+
+  static Class<?> findInMemoryClass(final String name) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    initSuperFindInMemoryClass();
+    return (Class<?>)superFindInMemoryClass.invoke(null, name);
+  }
 
   /**
    * Process:
@@ -70,13 +87,20 @@ public class BoxureClassLoader extends DynamicClassLoader {
     throws ClassNotFoundException {
 
     Class<?> clazz = super.findLoadedClass(name);
-    if (clazz == null) clazz = DynamicClassLoader.findInMemoryClass(context, name);
+    try {
+      if (clazz == null) clazz = findInMemoryClass(name);
+    } catch (Exception e) {
+      if (logging) {
+        log("[Boxure returning already loading class failed: "+ e.getMessage() +"]");
+        e.printStackTrace();
+      }
+    }
     if (clazz != null) {
       if (logging) {
         log("[Boxure returning already loading class: "+ name +"]");
         if (this != clazz.getClassLoader() && name.endsWith(RT.LOADER_SUFFIX)) {
-          Object injected = context.injectNamespaces(clojure.lang.LoaderContext.ROOT, name.substring(0, name.length() - RT.LOADER_SUFFIX.length()));
-          log("  [injected outer namespaces: "+ injected +"]");
+          // Object injected = context.injectNamespaces(clojure.lang.LoaderContext.ROOT, name.substring(0, name.length() - RT.LOADER_SUFFIX.length()));
+          // log("  [injected outer namespaces: "+ injected +"]");
         }
       }
       return clazz;
@@ -113,8 +137,8 @@ public class BoxureClassLoader extends DynamicClassLoader {
             }
             // Inject the required Namespace into the current loader context, otherwise we get:
             // java.lang.ExceptionInInitializerError Caused by: 'No namespace: ... found'
-            Object injected = context.injectNamespaces(clojure.lang.LoaderContext.ROOT, name.substring(0, name.length() - RT.LOADER_SUFFIX.length()));
-            if (logging) log("  [injected outer namespaces: "+ injected +"]");
+            // Object injected = context.injectNamespaces(clojure.lang.LoaderContext.ROOT, name.substring(0, name.length() - RT.LOADER_SUFFIX.length()));
+            // if (logging) log("  [injected outer namespaces: "+ injected +"]");
           }
         }
         return superClazz;
