@@ -145,7 +145,13 @@ public class BoxureClassLoader extends DynamicClassLoader {
 
   private void log(final String msg) {
     if (logging) {
-      System.out.println(msg);
+      try {
+        System.out.println(msg);
+      } catch (Exception e) {
+        System.out.println(e.getMessage());
+        e.printStackTrace();
+        System.out.println(msg.toString());
+      }
     }
   }
 
