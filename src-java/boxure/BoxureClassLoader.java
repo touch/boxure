@@ -122,10 +122,6 @@ public class BoxureClassLoader extends DynamicClassLoader {
         return superClazz;
       } catch (ClassNotFoundException cnfe2) {
         if (logging) log("[Boxure could not load "+ name +" by normal classloading]");
-        if (logging) {
-          log("[Boxure Classpath");
-          Arrays.stream(getURLs()).map(url -> url.toString()).forEach(urlStr -> log(urlStr));
-        }
         throw cnfe2;
       }
     }
