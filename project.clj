@@ -1,9 +1,9 @@
-(defproject boxure "0.2.0-SNAPSHOT"
+(defproject boxure "0.1.0-SNAPSHOT"
   :description "A Clojure runtime isolating classloader."
   :url "http://github.com/containium/boxure"
   :license {:name "Mozilla Public License 2.0"
             :url "http://mozilla.org/MPL/2.0/"}
-  :dependencies [[boxure/clojure "1.9.0"]
+  :dependencies [[boxure/clojure "1.8.0"]
                  ;; Until Leiningen fixes it's plexus and wagon deps, we add and upgrade it explicitly:
                  [leiningen-core "2.10.0" :exclusions [org.clojure/clojure]]
                  [classlojure "0.6.6"]
