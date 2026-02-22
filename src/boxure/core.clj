@@ -174,9 +174,6 @@
                             (resolve-managed-dependencies :dependencies nil project)))
         classpath (concat (file-classpath file project) dependencies)
         urls (into-array URL (map (comp as-url (partial str "file:")) classpath))
-        _ (when true
-            (println "Classpath URLs for box:")
-            (doseq [url urls] (print url)))
         box-cl (BoxureClassLoader. urls parent-cl
                                    (apply str (interpose "|" (:isolates options)))
                                    (boolean (:debug? options)))
