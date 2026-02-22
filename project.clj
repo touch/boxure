@@ -5,7 +5,7 @@
             :url "http://mozilla.org/MPL/2.0/"}
   :dependencies [[boxure/clojure "1.9.0"]
                  ;; Until Leiningen fixes it's plexus and wagon deps, we add and upgrade it explicitly:
-                 [leiningen-core "2.10.0" :exclusions [org.clojure/clojure]]
+                 [leiningen-core "2.12.0" :exclusions [org.clojure/clojure]]
                  [classlojure "0.6.6"]
                  [org.apache.maven.wagon/wagon-provider-api "3.5.3"] 
                  [org.apache.maven.wagon/wagon-http "3.5.3"]
